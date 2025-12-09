@@ -1,0 +1,9 @@
+# Ignore all node_modules in client/ and server/
+node_modules/
+
+# (optional but recommended)
+dist/
+.env
+npm-debug.log*
+yarn-error.log*
+
