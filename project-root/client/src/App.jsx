@@ -1,3 +1,4 @@
+// src/App.jsx
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
@@ -5,19 +6,18 @@ import RegisterPage from './pages/RegisterPage';
 import ClientDashboard from './pages/ClientDashboard';
 import StaffDashboard from './pages/StaffDashboard';
 import AdminDashboard from './pages/AdminDashboard';
-import './App.css';
 
 function App() {
-  // Load user from localStorage or null
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
+  const [user, setUser] = useState(() => {
+    // Load user from localStorage if exists
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
 
-  // Called after login
-  const handleLogin = (userData) => {
-    setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+  const handleLogin = (loggedInUser) => {
+    setUser(loggedInUser);
   };
 
-  // Logout function
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem('user');
@@ -25,11 +25,6 @@ function App() {
 
   return (
     <Router>
-      <header>
-        <h1>Appointment Booking</h1>
-        {user && <button onClick={handleLogout}>Logout</button>}
-      </header>
-
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
@@ -38,18 +33,18 @@ function App() {
         {/* Protected routes */}
         <Route
           path="/client"
-          element={user?.role === 'client' ? <ClientDashboard /> : <Navigate to="/login" />}
+          element={user && user.role === 'client' ? <ClientDashboard /> : <Navigate to="/login" />}
         />
         <Route
           path="/staff"
-          element={user?.role === 'staff' ? <StaffDashboard /> : <Navigate to="/login" />}
+          element={user && user.role === 'staff' ? <StaffDashboard /> : <Navigate to="/login" />}
         />
         <Route
           path="/admin"
-          element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />}
+          element={user && user.role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />}
         />
 
-        {/* Redirect unknown paths */}
+        {/* Default route */}
         <Route path="*" element={<Navigate to={user ? `/${user.role}` : "/login"} />} />
       </Routes>
     </Router>
@@ -57,4 +52,3 @@ function App() {
 }
 
 export default App;
-git 
