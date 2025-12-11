@@ -1,35 +1,60 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ClientDashboard from './pages/ClientDashboard';
+import StaffDashboard from './pages/StaffDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import './App.css';
 
 function App() {
-  const [count, setCount] = useState(0)
+  // Load user from localStorage or null
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
+
+  // Called after login
+  const handleLogin = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
+  // Logout function
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <Router>
+      <header>
+        <h1>Appointment Booking</h1>
+        {user && <button onClick={handleLogout}>Logout</button>}
+      </header>
+
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+        <Route path="/register" element={<RegisterPage />} />
+
+        {/* Protected routes */}
+        <Route
+          path="/client"
+          element={user?.role === 'client' ? <ClientDashboard /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/staff"
+          element={user?.role === 'staff' ? <StaffDashboard /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/admin"
+          element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />}
+        />
+
+        {/* Redirect unknown paths */}
+        <Route path="*" element={<Navigate to={user ? `/${user.role}` : "/login"} />} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;
+git 
