@@ -1,74 +1,121 @@
+// src/pages/LoginPage.jsx
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { api } from '../api';
+import { useNavigate, Link } from 'react-router-dom';
 
-export default function LoginPage({ onLogin }) {
-    const navigate = useNavigate();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [role, setRole] = useState('client'); // default role
-    const [error, setError] = useState('');
+function LoginPage({ onLogin }) {
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    role: 'client',
+  });
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
-        try {
-            // Call backend login API
-            const user = await api.post('/auth/login', { email, password, role });
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-            // Store user in localStorage
-            localStorage.setItem('user', JSON.stringify(user));
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
 
-            // Update App state via onLogin
-            onLogin(user);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+          role: form.role,
+        }),
+      });
 
-            // Redirect to dashboard based on role
-            if (user.role === 'client') navigate('/client');
-            else if (user.role === 'staff') navigate('/staff');
-            else if (user.role === 'admin') navigate('/admin');
-            else navigate('/login'); // fallback
-        } catch (err) {
-            setError(err.message);
-        }
-    };
+      const data = await res.json();
 
-    return (
-        <div className="login-page">
-            <h2>Login</h2>
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label>Email:</label>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                    />
-                </div>
+      if (!res.ok) {
+        setError(data.error || 'Login failed');
+        return;
+      }
 
-                <div>
-                    <label>Password:</label>
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
-                </div>
+      onLogin(data);
 
-                <div>
-                    <label>Role:</label>
-                    <select value={role} onChange={(e) => setRole(e.target.value)}>
-                        <option value="client">Client</option>
-                        <option value="staff">Staff</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                </div>
+      if (data.role === 'client') navigate('/client');
+      else if (data.role === 'staff') navigate('/staff');
+      else navigate('/admin');
+    } catch (err) {
+      console.error(err);
+      setError('Network error');
+    }
+  };
 
-                {error && <p style={{ color: 'red' }}>{error}</p>}
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <h2 className="auth-title">Login</h2>
+        {error && <p className="auth-error">{error}</p>}
 
-                <button type="submit">Login</button>
-            </form>
-        </div>
-    );
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="email">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              className="auth-input"
+              value={form.email}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="password">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              className="auth-input"
+              value={form.password}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div className="auth-field">
+            <label className="auth-label" htmlFor="role">
+              Role
+            </label>
+            <select
+              id="role"
+              name="role"
+              className="auth-select"
+              value={form.role}
+              onChange={handleChange}
+            >
+              <option value="client">Client</option>
+              <option value="staff">Staff</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          <button type="submit" className="auth-button">
+            Login
+          </button>
+        </form>
+
+        {/* NEW: register link */}
+        <p className="auth-subtext">
+          Don&apos;t have an account?{' '}
+          <Link to="/register" className="auth-link">
+            Register as client
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
 }
+
+export default LoginPage;
+
