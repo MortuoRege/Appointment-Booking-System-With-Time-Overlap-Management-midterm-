@@ -1,52 +1,99 @@
 // src/App.jsx
-import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import ClientDashboard from './pages/ClientDashboard';
-import StaffDashboard from './pages/StaffDashboard';
-import AdminDashboard from './pages/AdminDashboard';
+import { useState } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import ClientDashboard from "./pages/ClientDashboard";
+import StaffDashboard from "./pages/StaffDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
   const [user, setUser] = useState(() => {
-    // Load user from localStorage if exists
-    const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
+    const saved = localStorage.getItem("user");
+    if (!saved) return null;
+    try {
+      return JSON.parse(saved);
+    } catch (err) {
+      console.error("Invalid user data in localStorage, clearing it", err);
+      localStorage.removeItem("user");
+      return null;
+    }
   });
 
   const handleLogin = (loggedInUser) => {
     setUser(loggedInUser);
+    localStorage.setItem("user", JSON.stringify(loggedInUser));
   };
 
   const handleLogout = () => {
     setUser(null);
-    localStorage.removeItem('user');
+    localStorage.removeItem("user");
   };
 
   return (
     <Router>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
-        <Route path="/register" element={<RegisterPage />} />
+      <div className="app-root">
+        {user && (
+          <header className="app-header">
+            <h1 className="app-title">Appointment Booking System</h1>
+            <div className="app-header-spacer" />
+            <span className="app-user">
+              {user.name} ({user.role})
+            </span>
+            <button className="app-logout" onClick={handleLogout}>
+              Logout
+            </button>
+          </header>
+        )}
 
-        {/* Protected routes */}
-        <Route
-          path="/client"
-          element={user && user.role === 'client' ? <ClientDashboard /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/staff"
-          element={user && user.role === 'staff' ? <StaffDashboard /> : <Navigate to="/login" />}
-        />
-        <Route
-          path="/admin"
-          element={user && user.role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />}
-        />
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<LoginPage onLogin={handleLogin} />} />
+          <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
+          <Route path="/register" element={<RegisterPage />} />
 
-        {/* Default route */}
-        <Route path="*" element={<Navigate to={user ? `/${user.role}` : "/login"} />} />
-      </Routes>
+          {/* Protected routes */}
+          <Route
+            path="/client"
+            element={
+              user && user.role === "client" ? (
+                <ClientDashboard user={user} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/staff"
+            element={
+              user && user.role === "staff" ? (
+                <StaffDashboard user={user} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              user && user.role === "admin" ? (
+                <AdminDashboard user={user} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+
+          {/* Catch-all */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </div>
     </Router>
   );
 }

@@ -46,5 +46,24 @@ router.post('/staff', async (req, res) => {
   }
 });
 
+
+// DELETE /api/admin/staff/:id
+router.delete('/staff/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const [result] = await pool.query('DELETE FROM staff WHERE id = ?', [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    res.json({ message: 'Staff member deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 export default router;
 

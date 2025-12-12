@@ -1,205 +1,251 @@
-import React, { useEffect, useState } from 'react';
+// src/pages/AdminDashboard.jsx
+import { useEffect, useState } from "react";
 
-const API_BASE = '/api';
-
-export default function AdminDashboard() {
-  const [user] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('user'));
-    } catch {
-      return null;
-    }
-  });
-
+function AdminDashboard({ user }) {
   const [staff, setStaff] = useState([]);
+  const [form, setForm] = useState({
+    name: "",
+    role: "",
+    email: "",
+    password: "",
+  });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const [name, setName] = useState('');
-  const [role, setRole] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState('');
-  const [createSuccess, setCreateSuccess] = useState('');
-
-  const loadStaff = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const res = await fetch(`${API_BASE}/admin/staff`);
-      if (!res.ok) {
-        throw new Error('Failed to load staff list');
-      }
-      const data = await res.json();
-      setStaff(data);
-    } catch (err) {
-      console.error(err);
-      setError(err.message || 'Error loading staff');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Load staff list once on mount
   useEffect(() => {
     loadStaff();
   }, []);
 
-  const handleCreateStaff = async (e) => {
-    e.preventDefault();
-    setCreateError('');
-    setCreateSuccess('');
+  async function loadStaff() {
+    try {
+      setLoading(true);
+      setError("");
+      const res = await fetch("/api/admin/staff");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load staff");
+      setStaff(data);
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-    if (!name || !role || !email || !password) {
-      setCreateError('Please fill in all fields.');
+  function handleChange(e) {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+
+    if (!form.name || !form.role || !form.email || !form.password) {
+      setError("Please fill in all fields.");
       return;
     }
 
-    const payload = { name, role, email, password };
-
     try {
-      setCreating(true);
-      const res = await fetch(`${API_BASE}/admin/staff`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      setSaving(true);
+      const res = await fetch("/api/admin/staff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
       });
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(data.error || "Failed to create staff member");
 
-      if (!res.ok) {
-        let body = {};
-        try {
-          body = await res.json();
-        } catch {
-          
-        }
-        const msg = body.error || 'Failed to create staff member';
-        throw new Error(msg);
-      }
-
-      setCreateSuccess('Staff member created.');
-      setName('');
-      setRole('');
-      setEmail('');
-      setPassword('');
+      setSuccess(`Staff member "${data.name}" created.`);
+      setForm({ name: "", role: "", email: "", password: "" });
       await loadStaff();
     } catch (err) {
       console.error(err);
-      setCreateError(err.message || 'Error creating staff member');
+      setError(err.message);
     } finally {
-      setCreating(false);
+      setSaving(false);
     }
-  };
+  }
 
-  if (!user || user.role !== 'admin') {
-    return (
-      <div className="page">
-        <div className="card">
-          <h1>Admin dashboard</h1>
-          <p>You must be logged in as an admin to view this page.</p>
-        </div>
-      </div>
+  async function handleDelete(id) {
+    const confirmDelete = window.confirm(
+      "Delete this staff member? This will also remove their appointments."
     );
+    if (!confirmDelete) return;
+
+    try {
+      setError("");
+      setSuccess("");
+      const res = await fetch(`/api/admin/staff/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(data.error || "Failed to delete staff member");
+
+      setSuccess("Staff member deleted.");
+      // remove from local state without full reload:
+      setStaff((prev) => prev.filter((m) => m.id !== id));
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
   }
 
   return (
-    <div className="page">
-      <div className="page-header">
-        <h1>Admin dashboard</h1>
-        <p className="muted">
-          Manage staff accounts. (Optional: add an appointments tab later.)
-        </p>
-      </div>
-
-      <div className="page-grid page-grid-admin">
-        <form className="card" onSubmit={handleCreateStaff}>
-          <h2 className="card-title">Add staff member</h2>
-
-          {createError && <div className="alert alert-error">{createError}</div>}
-          {createSuccess && (
-            <div className="alert alert-success">{createSuccess}</div>
+    <div className="dashboard-page">
+      <div className="dashboard-inner admin-inner">
+        <div className="dashboard-header-row">
+          <div>
+            <h2 className="dashboard-title">Admin dashboard</h2>
+            <p className="dashboard-subtitle">
+              Manage staff accounts. Later you can extend this with an overview
+              of all appointments.
+            </p>
+          </div>
+          {user && (
+            <div className="dashboard-badge">
+              Admin: <span>{user.name}</span>
+            </div>
           )}
+        </div>
 
-          <div className="form-row">
-            <label>
-              Name
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Jane Doe"
-              />
-            </label>
-          </div>
+        <div className="admin-grid">
+          {/* Left: create staff */}
+          <section className="admin-card">
+            <h3 className="admin-card-title">Add staff member</h3>
+            <p className="admin-card-subtitle">
+              Create staff accounts that clients can book appointments with.
+            </p>
 
-          <div className="form-row">
-            <label>
-              Role
-              <input
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                placeholder="Tutor / Support / Dentist..."
-              />
-            </label>
-          </div>
+            {error && <p className="auth-error">{error}</p>}
+            {success && <p className="auth-success">{success}</p>}
 
-          <div className="form-row">
-            <label>
-              Email
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="staff@example.com"
-              />
-            </label>
-          </div>
+            <form className="admin-form" onSubmit={handleSubmit}>
+              <div className="admin-form-grid">
+                <div className="auth-field">
+                  <label className="auth-label" htmlFor="name">
+                    Name
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    className="auth-input"
+                    value={form.name}
+                    onChange={handleChange}
+                  />
+                </div>
 
-          <div className="form-row">
-            <label>
-              Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
-          </div>
+                <div className="auth-field">
+                  <label className="auth-label" htmlFor="role">
+                    Role
+                  </label>
+                  <input
+                    id="role"
+                    name="role"
+                    className="auth-input"
+                    placeholder="Tutor / Dentist / Support..."
+                    value={form.role}
+                    onChange={handleChange}
+                  />
+                </div>
 
-          <div className="form-row">
-            <button className="btn" type="submit" disabled={creating}>
-              {creating ? 'Creating...' : 'Create staff'}
-            </button>
-          </div>
-        </form>
+                <div className="auth-field">
+                  <label className="auth-label" htmlFor="email">
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    className="auth-input"
+                    value={form.email}
+                    onChange={handleChange}
+                  />
+                </div>
 
-        <div className="card">
-          <h2 className="card-title">Staff members</h2>
-          {error && <div className="alert alert-error">{error}</div>}
-          {loading ? (
-            <p>Loading...</p>
-          ) : staff.length === 0 ? (
-            <p className="muted">No staff yet.</p>
-          ) : (
-            <table className="card-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Role</th>
-                  <th>Email</th>
-                </tr>
-              </thead>
-              <tbody>
-                {staff.map((s) => (
-                  <tr key={s.id}>
-                    <td>{s.name}</td>
-                    <td>{s.role}</td>
-                    <td>{s.email}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                <div className="auth-field">
+                  <label className="auth-label" htmlFor="password">
+                    Password
+                  </label>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    className="auth-input"
+                    value={form.password}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="auth-button admin-submit"
+                disabled={saving}
+              >
+                {saving ? "Creating…" : "Create staff"}
+              </button>
+            </form>
+          </section>
+
+          {/* Right: staff list */}
+          <section className="admin-card">
+            <h3 className="admin-card-title">Staff members</h3>
+            <p className="admin-card-subtitle">
+              Total: {staff.length}{" "}
+              {loading && <span className="admin-loading">Refreshing…</span>}
+            </p>
+
+            {staff.length === 0 && !loading && (
+              <p className="admin-empty">
+                No staff members yet. Create one on the left.
+              </p>
+            )}
+
+            {staff.length > 0 && (
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Role</th>
+                      <th>Email</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staff.map((member) => (
+                      <tr key={member.id}>
+                        <td>{member.name}</td>
+                        <td>
+                          <span className="tag-pill">{member.role}</span>
+                        </td>
+                        <td className="admin-email-cell">{member.email}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="admin-delete-button"
+                            onClick={() => handleDelete(member.id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </div>
       </div>
     </div>
   );
 }
+
+export default AdminDashboard;
